@@ -1,0 +1,40 @@
+--- #wordpress website deployement
+
+ - hosts: website
+   become: yes
+   vars:
+     database: word-data
+     username: word-user
+     host: localhost
+     password: word-password
+   tasks:
+   - name: installing required packages
+     yum: name={{ item }} state=latest
+     with_items:
+      - php
+      - php-mysql
+      - php-gd
+      - httpd
+     notify: starting httpd
+   - name: installing database
+     yum: name={{ item }} state=latest
+     with_items:
+      - mariadb-server
+      - mariadb
+     notify: starting database
+   - name: downloading and unarchive the wordpress zip file
+     unarchive:
+      src: http://wordpress.org/latest.tar.gz
+      dest: /tmp/
+      remote_src: true
+   - name: cleaning the web directory
+     command: /usr/bin/rm -rf /var/www/html
+   - name: moving website to folder
+     command: /usr/bin/mv /tmp/wordpress /var/www/html/
+   - name: copy template to wordpress folder
+     template: src=/home/ansible/wp-config.j2 dest=/var/www/html/wp-config.php
+   handlers:
+   - name: starting httpd
+     service: name=httpd state=started enabled=yes
+   - name: starting database
+     service: name=mariadb state=started enabled=yes
