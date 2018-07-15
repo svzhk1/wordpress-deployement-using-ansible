@@ -1,0 +1,46 @@
+--- #working with database
+- hosts: website
+  become: yes
+  tasks:
+  - name: installing python module
+    yum: name=MySQL-python state=latest
+  - name: installing maridb server
+    yum: name={{item}} state=latest
+    with_items:
+     - mariadb-server
+     - mariadb
+  - name: start the database
+    service: name=mariadb state=started enabled=yes
+  - name: delete anonymous MySQL server user for {{ ansible_nodename }}
+    mysql_user: login_user=root
+                check_implicit_admin=yes
+                user=""
+                host={{ item }}
+                state="absent"
+    with_items:
+    - ""
+    - "{{ ansible_nodename }}"
+    - localhost
+
+  - name: Change root user password on first run
+    mysql_user: login_user=root
+                check_implicit_admin=yes
+                name=root
+                password=word-password
+                priv=*.*:ALL,GRANT
+                host={{ item }}
+    with_items:
+    - "{{ ansible_nodename }}"
+    - 127.0.0.1
+    - ::1
+    - localhost
+
+  - name: remove the MySQL test database
+    action: mysql_db login_user=root login_password=word-password db=test state=absent
+  - name: creating newdatabase
+    mysql_db: login_user=root login_password=word-password name=word-data state=present
+  - name: creating user for database
+    mysql_user: login_user=root login_password=word-password name=word-user password=word-password priv='*.*:ALL,GRANT' host=localhost state=present
+  handlers:
+  - name: start the database
+    service: name=maridb state=started enabled=yes                                                   
